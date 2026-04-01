@@ -22,9 +22,7 @@
   ],
   "scripts": {
     "build": "node sync-version.js && tsc && shx chmod +x dist/*.js",
-    "build:public": "npx tsc -p packages/mcp-server-public/tsconfig.json",
     "validate:protocol": "bash scripts/validation-mcp.sh",
-    "validate:public": "bash scripts/validation-public.sh",
     "validate:docker": "bash scripts/validation-docker.sh",
     "prepare": "npm run build",
     "watch": "tsc --watch",

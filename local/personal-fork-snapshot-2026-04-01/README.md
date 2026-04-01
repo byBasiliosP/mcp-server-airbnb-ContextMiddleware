@@ -1,34 +1,4 @@
-# Airbnb MCP Repository
-
-This repository now contains two tracks:
-
-- `packages/mcp-server-public`: the reusable public package for other developers
-- `local/personal-fork-snapshot-2026-04-01`: a preserved local copy of the current opinionated fork implementation
-
-If you are integrating this into your own host, start with `packages/mcp-server-public/README.md`.
-
-## Public Package
-
-Headline:
-
-Reusable Airbnb MCP primitives for search, comparison, and trip-session context.
-
-The public package is built for:
-
-- general travel search and decision support
-- LLM-agnostic hosts
-- session-oriented context storage
-- generic resources and prompts
-- developer extension through custom scoring and storage
-
-Build and validate it from the repo root:
-
-```bash
-npm run build:public
-npm run validate:public
-```
-
-## Legacy Fork
+# Airbnb Search & Listings - Desktop Extension (DXT)
 
 A comprehensive Desktop Extension for searching Airbnb listings with advanced filtering capabilities and detailed property information retrieval. Built as a Model Context Protocol (MCP) server packaged in the Desktop Extension (DXT) format for easy installation and use with compatible AI applications.
 
