@@ -1,11 +1,15 @@
 # Airbnb MCP Repository
 
-This repository now contains two tracks:
+This repository now contains two active tracks:
 
 - `packages/mcp-server-public`: the reusable public package for other developers
-- `local/personal-fork-snapshot-2026-04-01`: a preserved local copy of the current opinionated fork implementation
+- the root DXT/MCP implementation: the original opinionated fork flow for direct Airbnb MCP usage
 
 If you are integrating this into your own host, start with `packages/mcp-server-public/README.md`.
+
+The preserved personal snapshot now lives in the `personal-agent` repository under:
+
+- `vendor/airbnb-mcp-contextmiddleware-snapshot-2026-04-01`
 
 ## Public Package
 
