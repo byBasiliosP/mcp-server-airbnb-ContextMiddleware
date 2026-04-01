@@ -4,7 +4,11 @@ set -euo pipefail
 node <<'NODE'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { ListResourceTemplatesResultSchema, ListResourcesResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  ListResourceTemplatesResultSchema,
+  ListResourcesResultSchema,
+  ReadResourceResultSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -15,6 +19,38 @@ function assert(condition, message) {
 function parseToolTextPayload(result) {
   const text = result?.content?.find((item) => item.type === 'text')?.text;
   return text ? JSON.parse(text) : undefined;
+}
+
+async function readJsonResource(client, uri) {
+  const response = await client.request({
+    method: 'resources/read',
+    params: { uri },
+  }, ReadResourceResultSchema);
+  const text = response?.contents?.[0]?.text;
+  return text ? JSON.parse(text) : undefined;
+}
+
+async function runGroundedPublicSearch(client, location, expectedPathFragment, bounds) {
+  const response = await client.callTool({
+    name: 'airbnb_search',
+    arguments: {
+      location,
+      checkin: '2026-04-25',
+      checkout: '2026-04-27',
+      adults: 2,
+      ignoreRobotsText: true,
+      maxResults: 1,
+    },
+  });
+  const payload = parseToolTextPayload(response);
+  assert(typeof payload?.searchUrl === 'string' && payload.searchUrl.includes(expectedPathFragment), `${location} searchUrl should include ${expectedPathFragment}`);
+  assert(Array.isArray(payload?.results) && payload.results.length === 1, `${location} search should return one result`);
+  const coordinates = payload.results[0]?.coordinates || {};
+  const lat = Number(coordinates.latitude);
+  const lng = Number(coordinates.longitude);
+  assert(Number.isFinite(lat) && Number.isFinite(lng), `${location} result should include coordinates`);
+  assert(lat >= bounds.minLat && lat <= bounds.maxLat, `${location} latitude ${lat} should be in bounds`);
+  assert(lng >= bounds.minLng && lng <= bounds.maxLng, `${location} longitude ${lng} should be in bounds`);
 }
 
 const transport = new StdioClientTransport({
@@ -78,6 +114,32 @@ try {
   const searchPayload = parseToolTextPayload(search);
   assert(Array.isArray(searchPayload?.results) && searchPayload.results.length > 0, 'airbnb_search should return results');
 
+  await runGroundedPublicSearch(client, 'New York, NY', '/s/New-York--NY/homes', {
+    minLat: 40.4,
+    maxLat: 41.1,
+    minLng: -74.4,
+    maxLng: -73.3,
+  });
+  await runGroundedPublicSearch(client, 'Salt Lake City, UT', '/s/Salt-Lake-City--UT/homes', {
+    minLat: 40.4,
+    maxLat: 40.9,
+    minLng: -112.2,
+    maxLng: -111.6,
+  });
+
+  const listingDetails = await client.callTool({
+    name: 'airbnb_listing_details',
+    arguments: {
+      id: searchPayload.results[0].id,
+      compact: true,
+      ignoreRobotsText: true,
+    },
+  });
+  const listingPayload = parseToolTextPayload(listingDetails);
+  assert(listingPayload?.listingId === searchPayload.results[0].id, 'airbnb_listing_details should preserve listing id');
+  assert(typeof listingPayload?.normalized?.title === 'string' && listingPayload.normalized.title.length > 0, 'airbnb_listing_details should return normalized title');
+  assert(Array.isArray(listingPayload?.sections) && listingPayload.sections.length > 0, 'airbnb_listing_details should return sections');
+
   const candidateSet = await client.callTool({
     name: 'build_candidate_set',
     arguments: {
@@ -123,6 +185,21 @@ try {
   const resources = await client.request({ method: 'resources/list' }, ListResourcesResultSchema);
   const uris = resources.resources.map((resource) => resource.uri);
   assert(uris.includes(`trip://${constraintsPayload.tripId}/constraints`), 'trip constraint resource should be listed');
+  assert(uris.includes(`trip://${constraintsPayload.tripId}/shortlist`), 'trip shortlist resource should be listed');
+  assert(uris.includes(`airbnb://search/${searchPayload.searchId}/results`), 'search results resource should be listed');
+  assert(uris.includes(`airbnb://listing/${searchPayload.results[0].id}/normalized`), 'listing normalized resource should be listed');
+
+  const constraintResource = await readJsonResource(client, `trip://${constraintsPayload.tripId}/constraints`);
+  assert(constraintResource?.requiredBedrooms === 3, 'trip constraint resource should expose saved requiredBedrooms');
+
+  const shortlistResource = await readJsonResource(client, `trip://${constraintsPayload.tripId}/shortlist`);
+  assert(Array.isArray(shortlistResource) && shortlistResource.length === 1, 'trip shortlist resource should return one listing');
+
+  const searchResultsResource = await readJsonResource(client, `airbnb://search/${searchPayload.searchId}/results`);
+  assert(Array.isArray(searchResultsResource) && searchResultsResource.length > 0, 'search results resource should return stored results');
+
+  const normalizedListingResource = await readJsonResource(client, `airbnb://listing/${searchPayload.results[0].id}/normalized`);
+  assert(normalizedListingResource?.id === searchPayload.results[0].id, 'listing normalized resource should return requested listing');
 
   const prompt = await client.getPrompt({ name: 'public_agent_instructions', arguments: { route: 'search' } });
   assert(prompt?.messages?.length > 0, 'public_agent_instructions should return messages');
