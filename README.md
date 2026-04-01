@@ -12,6 +12,7 @@ A comprehensive Desktop Extension for searching Airbnb listings with advanced fi
 - **Price range filtering** with minimum and maximum price constraints
 - **Pagination support** for browsing through large result sets
 - **Context-aware ranking** with budget, rating, and amenity prioritization
+- **Context middleware** that extracts missing structured fields from free-form traveler context
 
 ### 🏠 Detailed Property Information
 - **Comprehensive listing details** including amenities, policies, and highlights
@@ -107,6 +108,13 @@ If you prefer Docker Compose, use the provided `docker-compose.yml`:
 docker compose up --build
 ```
 
+You can pass the context-related settings below via `docker run` or `docker compose`:
+
+- `AIRBNB_DEFAULT_CONTEXT_RESULTS` (default: `6`)
+- `AIRBNB_MAX_SEARCH_RESULTS` (default: `25`)
+- `AIRBNB_CONTEXT_SUMMARY_LENGTH` (default: `180`)
+- `AIRBNB_DETAIL_SUMMARY_LENGTH` (default: `500`)
+
 ## Configuration
 
 The extension provides the following user-configurable options:
@@ -116,6 +124,30 @@ The extension provides the following user-configurable options:
 - **Default**: `false`
 - **Description**: Bypass robots.txt restrictions when making requests to Airbnb
 - **Recommendation**: Keep disabled unless needed for testing purposes
+
+## Context middleware
+
+The `airbnb_search_contextual` tool accepts a free-form `context` string.  
+The middleware parses signals and only fills fields that were not explicitly provided.
+
+- Parsed signals can include location, date spans, guests, budget, rating, and amenity intent.
+- Explicit arguments always override context-derived values.
+- `location` may be omitted in contextual search if it can be inferred from context.
+
+Example:
+
+```json
+{
+  "context": "romantic trip, checkin next Friday checkout Sunday, 2 adults and 1 child, budget under 250, must have pool and Wi-Fi, avoid noisy neighborhoods, rating at least 4.5"
+}
+```
+
+Response includes:
+
+- `context.source`: original context text
+- `context.parsed`: extracted raw signals
+- `context.usage`: which parameters were sourced from context
+- `context.resolved`: final effective search parameters
 
 ## Tools
 
@@ -174,7 +206,7 @@ Get detailed information about a specific Airbnb listing.
 Search and rank listings using traveler constraints:
 
 **Parameters:**
-- `location` (required): Location to search (e.g., "San Francisco, CA")
+- `location` (optional): Location to search (e.g., "San Francisco, CA")
 - `checkin` (optional): Check-in date in YYYY-MM-DD format
 - `checkout` (optional): Check-out date in YYYY-MM-DD format
 - `adults` (optional): Number of adults (default: 1)
@@ -191,6 +223,7 @@ Search and rank listings using traveler constraints:
 - `preferredAmenities` (optional): Amenities that increase ranking confidence
 - `avoidAmenities` (optional): Amenities to de-prioritize candidates
 - `ignoreRobotsText` (optional): Override robots.txt for this request
+- `context` (optional): Free-form traveler context used as a fallback when fields are missing
 
 **Returns:**
 - Ranked recommendations with `matchScore` and `matchReasons`
@@ -200,6 +233,7 @@ Search and rank listings using traveler constraints:
 **Notes:**
 - Provide a free-form `context` string to let the server infer missing fields (location, checkin, checkout, guests, budget/rating, amenity signals).
 - The parser is defensive and only applies inferred fields when explicit arguments are not provided.
+- If both explicit values and inferred context values exist, explicit ones are used.
 
 ## Technical Details
 
