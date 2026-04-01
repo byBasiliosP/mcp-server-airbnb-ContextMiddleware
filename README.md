@@ -11,6 +11,7 @@ A comprehensive Desktop Extension for searching Airbnb listings with advanced fi
 - **Guest configuration** including adults, children, infants, and pets
 - **Price range filtering** with minimum and maximum price constraints
 - **Pagination support** for browsing through large result sets
+- **Context-aware ranking** with budget, rating, and amenity prioritization
 
 ### 🏠 Detailed Property Information
 - **Comprehensive listing details** including amenities, policies, and highlights
@@ -18,6 +19,7 @@ A comprehensive Desktop Extension for searching Airbnb listings with advanced fi
 - **House rules and policies** for informed booking decisions
 - **Property descriptions** and key features
 - **Direct links** to Airbnb listings for easy booking
+- **Compact-by-default responses** to reduce model context usage
 
 ### 🛡️ Security & Compliance
 - **Robots.txt compliance** with configurable override for testing
@@ -75,6 +77,36 @@ Before starting make sure [Node.js](https://nodejs.org/) is installed on your de
 3. Restart.
 
 
+### Docker
+
+Build and run the MCP server container locally:
+
+```bash
+docker build -t airbnb-mcp-server .
+docker run --rm -it airbnb-mcp-server
+```
+
+To ignore robots.txt for testing:
+
+```bash
+docker run --rm -it airbnb-mcp-server node dist/index.js --ignore-robots-txt
+```
+
+Example with context/tuning environment variables:
+
+```bash
+docker run --rm -it \
+  -e AIRBNB_DEFAULT_CONTEXT_RESULTS=6 \
+  -e AIRBNB_MAX_SEARCH_RESULTS=25 \
+  airbnb-mcp-server
+```
+
+If you prefer Docker Compose, use the provided `docker-compose.yml`:
+
+```bash
+docker compose up --build
+```
+
 ## Configuration
 
 The extension provides the following user-configurable options:
@@ -104,6 +136,9 @@ Search for Airbnb listings with comprehensive filtering options.
 - `maxPrice` (optional): Maximum price per night
 - `cursor` (optional): Pagination cursor for browsing results
 - `ignoreRobotsText` (optional): Override robots.txt for this request
+- `compact` (optional, default: `true`): Return compact summaries for each listing
+- `maxResults` (optional): Limit result count sent back
+- `includeFields` (optional): Return only selected top-level fields in compact mode
 
 **Returns:**
 - Search results with property details, pricing, and direct links
@@ -123,6 +158,8 @@ Get detailed information about a specific Airbnb listing.
 - `infants` (optional): Number of infants (default: 0)
 - `pets` (optional): Number of pets (default: 0)
 - `ignoreRobotsText` (optional): Override robots.txt for this request
+- `compact` (optional, default: `true`): Return compact sections by default
+- `includeSections` (optional): Restrict sections by section ID list in compact/full response
 
 **Returns:**
 - Detailed property information including:
@@ -131,6 +168,38 @@ Get detailed information about a specific Airbnb listing.
   - House rules and policies
   - Property highlights and descriptions
   - Direct link to the listing
+
+### `airbnb_search_contextual`
+
+Search and rank listings using traveler constraints:
+
+**Parameters:**
+- `location` (required): Location to search (e.g., "San Francisco, CA")
+- `checkin` (optional): Check-in date in YYYY-MM-DD format
+- `checkout` (optional): Check-out date in YYYY-MM-DD format
+- `adults` (optional): Number of adults (default: 1)
+- `children` (optional): Number of children (default: 0)
+- `infants` (optional): Number of infants (default: 0)
+- `pets` (optional): Number of pets (default: 0)
+- `minPrice` (optional): Minimum price per night
+- `maxPrice` (optional): Maximum price per night
+- `compact` (optional, default: `true`): Return compact ranking output
+- `maxResults` (optional): Limit ranked recommendations
+- `maxPricePerNight` (optional): Budget cap used for ranking
+- `minRating` (optional): Minimum rating threshold for scoring
+- `mustHaveAmenities` (optional): Amenities that should be present for stronger ranking
+- `preferredAmenities` (optional): Amenities that increase ranking confidence
+- `avoidAmenities` (optional): Amenities to de-prioritize candidates
+- `ignoreRobotsText` (optional): Override robots.txt for this request
+
+**Returns:**
+- Ranked recommendations with `matchScore` and `matchReasons`
+- Parsed context breakdown echoed back (including inferred location, dates, guests, budget, rating, amenities, and which fields came from context)
+- Pagination metadata from source search query
+
+**Notes:**
+- Provide a free-form `context` string to let the server infer missing fields (location, checkin, checkout, guests, budget/rating, amenity signals).
+- The parser is defensive and only applies inferred fields when explicit arguments are not provided.
 
 ## Technical Details
 
