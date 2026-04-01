@@ -22,6 +22,7 @@
   ],
   "scripts": {
     "build": "node sync-version.js && tsc && shx chmod +x dist/*.js",
+    "validate:protocol": "bash scripts/validation-mcp.sh",
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "sync-version": "node sync-version.js"
