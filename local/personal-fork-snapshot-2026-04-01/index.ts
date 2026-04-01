@@ -41,11 +41,7 @@ const DEFAULT_CONTEXT_RESULTS = getEnvInt("AIRBNB_DEFAULT_CONTEXT_RESULTS", 6, 1
 const CONTEXT_SUMMARY_LENGTH = getEnvInt("AIRBNB_CONTEXT_SUMMARY_LENGTH", 180, 40, 500);
 const DETAIL_SUMMARY_LENGTH = getEnvInt("AIRBNB_DETAIL_SUMMARY_LENGTH", 500, 80, 1200);
 const CONTEXT_CACHE_TTL_MS = getEnvInt("AIRBNB_CONTEXT_CACHE_TTL_MS", 900_000, 60_000, 86_400_000);
-const SERVER_PROFILE = getServerProfile(process.env.AIRBNB_SERVER_PROFILE);
-const ENABLE_PREPARE_CONTEXT = parseOptionalBoolean(process.env.AIRBNB_ENABLE_PREPARE_CONTEXT) ?? (SERVER_PROFILE === "personal");
-const ENABLE_CONTEXTUAL_SEARCH = parseOptionalBoolean(process.env.AIRBNB_ENABLE_CONTEXTUAL_SEARCH) ?? true;
-const ENABLE_RECONCILE_RESULTS = (parseOptionalBoolean(process.env.AIRBNB_ENABLE_RECONCILE_RESULTS) ?? (SERVER_PROFILE === "personal")) && ENABLE_PREPARE_CONTEXT;
-const AUTO_EXPAND_CONTEXTUAL_LOCATIONS = parseOptionalBoolean(process.env.AIRBNB_AUTO_EXPAND_CONTEXTUAL_LOCATIONS) ?? (SERVER_PROFILE === "personal");
+const AUTO_EXPAND_CONTEXTUAL_LOCATIONS = parseBoolean(process.env.AIRBNB_AUTO_EXPAND_CONTEXTUAL_LOCATIONS, true);
 const AUTO_EXPAND_LOCATION_LIMIT = getEnvInt("AIRBNB_AUTO_EXPAND_LOCATION_LIMIT", 2, 0, 5);
 const AUTO_EXPAND_SCORE_THRESHOLD = getEnvInt("AIRBNB_AUTO_EXPAND_SCORE_THRESHOLD", 72, 0, 200);
 const HARDENED_ENV = process.env.AIRBNB_HARDENED_ENV === "true";
@@ -506,13 +502,13 @@ const AIRBNB_RECONCILE_RESULTS_TOOL: Tool = {
   }
 };
 
-const AIRBNB_TOOLS: Tool[] = [
-  ...(ENABLE_PREPARE_CONTEXT ? [AIRBNB_PREPARE_CONTEXT_TOOL] : []),
+const AIRBNB_TOOLS = [
+  AIRBNB_PREPARE_CONTEXT_TOOL,
   AIRBNB_SEARCH_TOOL,
   AIRBNB_LISTING_DETAILS_TOOL,
-  ...(ENABLE_CONTEXTUAL_SEARCH ? [AIRBNB_CONTEXT_TOOL] : []),
-  ...(ENABLE_RECONCILE_RESULTS ? [AIRBNB_RECONCILE_RESULTS_TOOL] : []),
-];
+  AIRBNB_CONTEXT_TOOL,
+  AIRBNB_RECONCILE_RESULTS_TOOL,
+] as const;
 
 const ALLOW_SEARCH_RESULT_SCHEMA: Record<string, any> = {
   title: true,
@@ -618,7 +614,6 @@ const ALLOW_SECTION_SCHEMA: Record<string, any> = {
 };
 
 type UnknownRecord = Record<string, any>;
-type ServerProfile = 'personal' | 'developer-template';
 
 type ContextParsedSignals = {
   location?: string;
@@ -902,14 +897,6 @@ function parseOptionalBoolean(value: unknown): boolean | undefined {
     }
   }
   return undefined;
-}
-
-function getServerProfile(value: unknown): ServerProfile {
-  const normalized = parseString(value).toLowerCase();
-  if (normalized === "developer-template") {
-    return "developer-template";
-  }
-  return "personal";
 }
 
 function parseStringArray(value: unknown): string[] {

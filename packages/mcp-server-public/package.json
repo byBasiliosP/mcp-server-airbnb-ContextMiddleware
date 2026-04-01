@@ -1,0 +1,28 @@
+{
+  "name": "@openbnb/mcp-server-public",
+  "version": "0.1.0",
+  "description": "Reusable Airbnb MCP primitives for search, comparison, and trip-session context.",
+  "license": "MIT",
+  "type": "module",
+  "author": "OpenBnB (https://openbnb.org)",
+  "bin": {
+    "mcp-server-airbnb-public": "dist/server/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "cheerio": "^1.0.0",
+    "node-fetch": "^3.3.2",
+    "robots-parser": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "typescript": "^5.8.2"
+  }
+}

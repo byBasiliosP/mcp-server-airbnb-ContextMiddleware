@@ -1,0 +1,11 @@
+services:
+  airbnb-mcp:
+    build:
+      context: .
+    image: airbnb-mcp-server
+    command: ["node", "dist/index.js"]
+    environment:
+      AIRBNB_DEFAULT_CONTEXT_RESULTS: "6"
+      AIRBNB_MAX_SEARCH_RESULTS: "25"
+      AIRBNB_CONTEXT_SUMMARY_LENGTH: "180"
+    tty: true
